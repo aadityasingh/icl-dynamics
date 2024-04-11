@@ -70,7 +70,7 @@ Our data generator assumes a set of classes. Each class can be composed of one o
 A key contribution of our work is the artificial optogenetics framework. This is mostly manifest in [models.py](models.py), which implements a `Transformer` that contains all elements of the framework. We wrap it with `SequenceClassifier` for our specific exemplar-label sequences. All manipulations on top of the framework (for the experiments in our papers) are implemented in [opto.py](opto.py). For full documentation on this portion of the code, see [artificial_optogenetics_guide.md](artificial_optogenetics_guide.md). As always, feel free to reach out with questions or collaborations -- aaditya.singh.21@ucl.ac.uk.
 
 <a name="transience"></a>
-## [The Transient Nature of Emergent In-Context Learning in Transformers](https://arxiv.org/abs/2311.08360)
+## Reproducing [The Transient Nature of Emergent In-Context Learning in Transformers](https://arxiv.org/abs/2311.08360)
 
 Most of the runs in this paper were conducted with the [original codebase](https://github.com/google-deepmind/emergent_in_context_learning) from Chan et. al. (2022). Namely, the runs using a jointly trained Resnet encoder (which is most of the results). This codebase was used for the remaining runs -- those with fixed LLaMa embedding vectors as exemplars (Section 4.3), and those with fixed Omniglot embeddings (Appendix C). 
 

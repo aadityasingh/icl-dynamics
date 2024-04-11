@@ -93,3 +93,17 @@ in case its useful to people building off this code:
 	- add support in the `standard_call` function or in a separate `opto_specific_fn` for setting the activations by using two forward passes
 	- Interestingly, path patching could also be applied during training. We haven't thought in depth about the uses of this functionality, but welcome future work in this direction.
 
+## Cite
+
+To cite this framework, use the following:
+```
+@misc{singh2024needs,
+      title={What needs to go right for an induction head? A mechanistic study of in-context learning circuits and their formation}, 
+      author={Aaditya K. Singh and Ted Moskovitz and Felix Hill and Stephanie C. Y. Chan and Andrew M. Saxe},
+      year={2024},
+      eprint={2404.07129},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
+
