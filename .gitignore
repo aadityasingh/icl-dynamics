@@ -1,0 +1,4 @@
+__pycache__/
+.ipynb_checkpoints/
+ih_paper_reprod/
+.DS_Store
