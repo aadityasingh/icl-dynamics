@@ -126,7 +126,7 @@ We include notebook copies of [ih_paper_plots.ipynb](ih_paper_plots.ipynb) that 
 <a name="coopetition"></a>
 ## Reproducing [Strategy coopetition explains the emergence and transience of in-context learning](https://arxiv.org/abs/2503.05631)
 
-This paper required significantly more than the [previous paper](#ih_paper), so we recommend using GPUs. The total compute is still significantly lower than the [first transience paper](#transience), given the smaller models used.
+This paper required significantly more compute than the [previous paper](#ih_paper), so we recommend using GPUs. The total compute is still significantly lower than the [first transience paper](#transience), given the smaller models used.
 
 To reproduce this paper, one should first generate the exemplar embeddings using [omni_features_extract.py](omni_features_extract.py). Then, one can run [coopetition_paper_sweep.py](coopetition_paper_sweep.py), which uses [submitit](https://github.com/facebookincubator/submitit) to parallelize jobs on a slurm cluster. The exact configuration may need to be changed depending on where you're running the jobs. Worst case, it should be relatively simple to run them sequentially. Note that the final two runs are on 12L models, and will take about 2 days on a 80GB H100 GPU -- those runs are only used for Figure 6b, and so could be removed if this is too expensive. Once the sweep is done, one can use [coopetition_paper_plots.ipynb](coopetition_paper_plots.ipynb) to reproduce all figures from the main paper.
 
