@@ -21,7 +21,7 @@ import opto
 # currently set to `icl-transience`
 use_wandb = False
 
-base_path = '/nfs/gatsbystor/asingh/coopetition'
+base_path = '/path/to/save'
 os.makedirs(base_path, exist_ok=True)
 os.makedirs(f'{base_path}/runs', exist_ok=True)
 os.makedirs(f'{base_path}/log_submitit', exist_ok=True)
@@ -35,7 +35,7 @@ executor.update_parameters(
   cpus_per_task=20,
   mem_gb=32,
   timeout_min=1440*2, # 2 days to give plenty of buffer for the longest run, which takes 16hrs
-  slurm_partition='gpu_saxe',
+  slurm_partition='TODO FILL IN',
 )
 
 ################################################################################
@@ -174,7 +174,6 @@ all_opts[-1].opto_disallow_prev_token_only_label = True
 ### Reject lottery ticket
 all_opts.append(deepcopy(opts))
 all_opts[-1].run = 'nol0h147'
-# TODO update command here
 # Through visualize_runs.py, we found that these are the three heads that have any PT behavior
 # By ablating them, we provide evidence against the hypothesis that ICL may emerge due to a "lottery ticket"
 all_opts[-1].opto_ablate_heads = ['0:1', '0:4', '0:7']

@@ -38,7 +38,7 @@ run_rest = True
 # currently set to `icl-transience`
 use_wandb = False
 
-base_path = '/nfs/gatsbystor/asingh/coopetition'
+base_path = '/path/to/save'
 os.makedirs(base_path, exist_ok=True)
 os.makedirs(f'{base_path}/runs', exist_ok=True)
 os.makedirs(f'{base_path}/log_submitit', exist_ok=True)
@@ -55,7 +55,7 @@ executor.update_parameters(
   cpus_per_task=20,
   mem_gb=32,
   timeout_min=1440*4, # 4 days, since the 12L model takes just over 2 days
-  slurm_partition='gpu_saxe',
+  slurm_partition='TODO FILL IN',
 )
 
 ################################################################################
@@ -91,11 +91,6 @@ eval_opts = parser.parse_args(
 all_make_eval_opts.append(deepcopy(eval_opts))
 all_make_eval_opts[-1].run = 'default_eval'
 
-all_make_eval_opts.append(deepcopy(eval_opts))
-all_make_eval_opts[-1].run = 'default_mq_eval'
-all_make_eval_opts[-1].pe_names = [f'mq_{name}' for name in all_make_eval_opts[-1].pe_names]
-all_make_eval_opts[-1].match_query_and_distractors = True
-
 # For the 12L model, we have ctx 8 sequences and need to adapt the evaluators accordingly.
 # We use all 20 exemplars, and all 12800 classes for full parity to the transience paper.
 ctx8_eval_opts = parser.parse_args(
@@ -120,11 +115,6 @@ ctx8_eval_opts = parser.parse_args(
 )
 all_make_eval_opts.append(deepcopy(ctx8_eval_opts))
 all_make_eval_opts[-1].run = 'ctx8_eval'
-
-all_make_eval_opts.append(deepcopy(ctx8_eval_opts))
-all_make_eval_opts[-1].run = 'ctx8_mq_eval'
-all_make_eval_opts[-1].pe_names = [f'mq_{name}' for name in all_make_eval_opts[-1].pe_names]
-all_make_eval_opts[-1].match_query_and_distractors = True
 
 ### We need to run the above to make the eval data
 if run_make_eval:
@@ -268,7 +258,6 @@ for ckpt_name in ckpts_to_init:
 all_opts.append(deepcopy(opts))
 all_opts[-1].run = 'mq'
 all_opts[-1].match_query_and_distractors = True
-all_opts[-1].load_eval_data.append(f'{base_path}/runs/default_mq_eval/eval_data.h5')
 
 ### 12L baseline run
 
@@ -297,7 +286,6 @@ all_opts[-1].run = '12l'
 all_opts.append(deepcopy(opts_12l))
 all_opts[-1].run = '12l_mq'
 all_opts[-1].match_query_and_distractors = True
-all_opts[-1].load_eval_data.append(f'{base_path}/runs/ctx8_mq_eval/eval_data.h5')
 
 if run_rest:
     jobs = executor.map_array(run_with_opts, all_opts)
