@@ -75,7 +75,6 @@ def compute_loss(
   y: Array, 
   keys: Array
 ) -> Array:
-  # pred_y = jax.vmap(model.call_with_all_aux)(x, y, key=keys)['out']
   pred_y = jax.vmap(partial(fwd_fn, model=model))(x=x, y=y, key=keys)['out']
   query_ce = ce(pred_y[:, -1, :], y[:, -1])
   # Hacky, but prevents nan'ing gradients of 0 (which biases are initialized too)
@@ -292,7 +291,7 @@ def run_with_opts(opts):
     import wandb
     wandb.login()
     wandb.init(
-      project="icl", config=opts, name=opts.run)
+      project="icl-transience", config=opts, name=opts.run, dir=opts.base_folder)
   
   opts.train_seed = jax.random.PRNGKey(opts.train_seed)
   opts.eval_seed = jax.random.PRNGKey(opts.eval_seed)
@@ -341,7 +340,8 @@ def run_with_opts(opts):
     train_class_sampler,
     train_exemplar_sampler,
     fs_relabel=splits['relabeling']['train'],
-    noise_scale=opts.noise_scale_train),
+    noise_scale=opts.noise_scale_train,
+    assign_query_label_random=opts.assign_query_label_random),
     data=data))
 
   train_data_seed, train_model_seed = jax.random.split(opts.train_seed, 2)
@@ -355,13 +355,18 @@ def run_with_opts(opts):
 
   eval_data = {}
   if opts.load_eval_data is not None:
-    # an evaluator is a mini dataset of sequences and labels
-    print("loading some evaluators from file")
-    eval_h5 = h5.File(opts.load_eval_data, 'r')
-    print("Found these eval sets in file:", eval_h5.keys())
-    for k in eval_h5:
-      eval_data[k] = {'examples': jnp.array(eval_h5['/'.join([k, 'examples'])]),
-                        'labels': jnp.array(eval_h5['/'.join([k, 'labels'])])}
+    for eval_file in opts.load_eval_data:
+      # an evaluator is a mini dataset of sequences and labels
+      print("loading some evaluators from file")
+      eval_h5 = h5.File(eval_file, 'r')
+      print("Found these eval sets in file:", eval_h5.keys())
+      for k in eval_h5:
+        if k in eval_data:
+          raise ValueError("Found duplicate eval key. Behavior in this case is not defined")
+        eval_data[k] = {'examples': jnp.array(eval_h5['/'.join([k, 'examples'])]),
+                          'labels': jnp.array(eval_h5['/'.join([k, 'labels'])])}
+      print("Loaded in file:", eval_h5.keys())
+      eval_h5.close()
 
   eval_data_seeds = jax.random.split(eval_data_seed, len(opts.pe_names))
   for i, name in enumerate(opts.pe_names):
@@ -431,10 +436,12 @@ def run_with_opts(opts):
     ckpt = eqx.tree_deserialise_leaves(opts.load_from_ckpt, ckpt_fmt)
 
     start_iter = ckpt['iter']
-    eval_model_seed = ckpt['seeds']['eval_model_seed']
-    train_data_seed = ckpt['seeds']['train_data_seed']
-    train_model_seed = ckpt['seeds']['train_model_seed']
-    opt_state = ckpt['opt_state']
+    if not opts.no_load_seeds:
+      eval_model_seed = ckpt['seeds']['eval_model_seed']
+      train_data_seed = ckpt['seeds']['train_data_seed']
+      train_model_seed = ckpt['seeds']['train_model_seed']
+    if not opts.no_load_opt_state:
+      opt_state = ckpt['opt_state']
     model = ckpt['model']
 
   ### Setup log.h5 ###
@@ -460,7 +467,8 @@ def run_with_opts(opts):
   
   for i in range(start_iter, opts.train_iters, opts.train_bs):
     if eval_ind < len(opts.eval_sched) and i >= opts.eval_sched[eval_ind]:
-      print('-'*10 + str(i))
+      if not opts.suppress_output:
+        print('-'*10 + str(i))
       eval_model_seed, current_eval_seed = jax.random.split(eval_model_seed, 2)
       out = evaluate(model=model, 
                       fwd_fn=fwd_fn_to_use, 
@@ -470,9 +478,10 @@ def run_with_opts(opts):
       results = h5.File('/'.join([run_folder, 'log.h5']), 'a')
       for k in out:
         for m in out[k]:
-          print(k, m, jnp.mean(out[k][m]))
+          if not opts.suppress_output:
+            print(k, m, jnp.mean(out[k][m]))
           if opts.use_wandb:
-            wandb.log({'-'.join([k, m]): jnp.mean(out[k][m]), 'iteration': i})
+            wandb.log({'-'.join([k, m]): jnp.mean(out[k][m]), 'iteration': i}, step=i//opts.train_bs)
           addr = '/'.join([k,m])
           if addr in results:
             results[addr].resize(results[addr].shape[0] + 1, axis=0)
@@ -482,33 +491,33 @@ def run_with_opts(opts):
       results['eval_iter'].resize(results['eval_iter'].shape[0]+1, axis=0)
       results['eval_iter'][-1] = i
       if len(train_metrics['iter']) > 0:
-        print('-')
-        current_lr = opts.lr
-        if opts.optimizer == 'warmup_decay':
-          current_lr = lr_schedule(i)
-          print(current_lr)
+        if not opts.suppress_output:
+          print('-')
         if opts.use_wandb:
-          wandb.log({**{m: train_metrics[m][-1] for m in ALL_TRAIN_METRICS}, 'iteration': i, 'lr': current_lr})
+          wandb.log({**{m: train_metrics[m][-1] for m in ALL_TRAIN_METRICS}, 'iteration': i}, step=i//opts.train_bs)
         for m in train_metrics:
           results['train_{}'.format(m)].resize(results['train_{}'.format(m)].shape[0]+len(train_metrics[m]), axis=0)
           results['train_{}'.format(m)][-len(train_metrics[m]):] = train_metrics[m]
-          print(m, train_metrics[m][-1])
+          if not opts.suppress_output:
+            print(m, train_metrics[m][-1])
           train_metrics[m] = []
       results.close()
       eval_ind += 1
 
     if ckpt_ind < len(opts.ckpt_sched) and i >= opts.ckpt_sched[ckpt_ind]:
-      print("Checkpointing...", i)
+      if not opts.suppress_output:
+        print("Checkpointing...", i)
       ckpt = {'iter': i,
               'seeds': {'eval_model_seed': eval_model_seed,
                         'train_data_seed': train_data_seed,
                         'train_model_seed': train_model_seed}, 
               'opt_state': opt_state,
               'model': model}
-      num = '{}'.format(i).zfill(9)
+      num = '{}'.format(i).zfill(11)
       eqx.tree_serialise_leaves('/'.join([ckpt_folder, num+".eqx"]), ckpt)
       if len(train_metrics['iter']) > 0:
-        print(train_metrics['iter'][-1], train_metrics['loss'][-1])
+        if not opts.suppress_output:
+          print(train_metrics['iter'][-1], train_metrics['loss'][-1])
       ckpt_ind += 1
 
     # Train step -- the train_data_seed is split and passed along (a la functional
@@ -533,6 +542,10 @@ def run_with_opts(opts):
     train_metrics['iter'].append(i+opts.train_bs)
     for m in metrics:
       train_metrics[m].append(metrics[m])
+    if opts.use_wandb:
+      if i % 1000*opts.train_bs == 0:
+        # Ideally we'd log learning rate, but hard to access with jax
+        wandb.log({**metrics, 'iteration': i}, step=1+i//opts.train_bs)
 
   print("End of training")
   eval_model_seed, current_eval_seed = jax.random.split(eval_model_seed, 2)
@@ -569,7 +582,7 @@ def run_with_opts(opts):
                       'train_model_seed': train_model_seed}, 
             'opt_state': opt_state,
             'model': model}
-    num = '{}'.format(i + opts.train_bs).zfill(9)
+    num = '{}'.format(i + opts.train_bs).zfill(11)
     eqx.tree_serialise_leaves('/'.join([ckpt_folder, num+".eqx"]), ckpt)
 
 

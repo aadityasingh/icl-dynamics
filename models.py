@@ -316,7 +316,7 @@ class AttentionBlock(eqx.Module):
                               b_init=jax.nn.initializers.zeros,
                               in_features=dim, 
                               out_features=dim,
-                              use_bias=True)
+                              use_bias=False)
     self.proj_drop = enn.Dropout(proj_drop)
 
   def call_with_all_aux(self, x: Array, *, key: Array, cache=dict(), cache_mask=dict()) -> Sequence[Array]:
@@ -490,7 +490,7 @@ class Transformer(eqx.Module):
     use_rope: bool = False,
     sin_time: float = 10000.0,
     mlp_ratio: Optional[float] = 4.0,
-    qkv_bias: bool = True,
+    qkv_bias: bool = False,
     qk_scale: Optional[float] = None,
     tok_embed_drop_rate: float = 0.0,
     pos_embed_drop_rate: float = 0.0,

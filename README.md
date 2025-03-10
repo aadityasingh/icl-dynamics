@@ -8,7 +8,7 @@
 3. [Artificial optogenetics framework](#artificial_opto) -- if you're looking to use this code for your work on different data setup/tasks, skip to this section.
 3. [Reproducing the transience paper](#transience)
 4. [Reproducing the induction heads paper](#ih_paper)
-5. (in progress) [mechanistic explanation of transience](#paper3)
+5. [Reproducing the coopetition paper](#coopetition)
 7. [Installation](#installation)
 8. [Contributors](#contributors)
 
@@ -22,13 +22,11 @@ This establishes emergent in-context learning as a **dynamical** phenomenon, as 
 
 Our second paper, [What needs to go right for an induction head?](https://arxiv.org/abs/2404.07129), studies emergence dynamics of [induction heads](https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html) on synthetic data that *requires ICL* to solve the task. We pursued this direction (rather than directly targeting the dynamics of transience in setups where ICL or IWL can solve the task) since we felt that there was more to be understood on the nature of induction heads and the dynamics of their formation before we were ready to tackle transience. This work also helped us build out our mechanistic toolkit, which is discussed further in the [artificial optogenetics framework section](#artificial_opto). See the [corresponding section](#ih_paper).
 
-Our third paper is in progress (results mostly finalized) and identifies a new mechanism relevant in understanding the transience phenomenon. This codebase will be updated when the work is posted to Arxiv.
-
-Our fourth paper is also in progress (still figuring out some results) and aims connects the pieces to provide a mechanistic understanding of ICL transience. This codebase will be updated when the work is posted to Arxiv.
+Our third paper, [Strategy coopetition explains the emergence and transience of in-context learning](https://arxiv.org/abs/2503.05631), brings everything together with a dynamical understanding of why ICL emerges, if only to fade away later (due to competition, as suggested in the [first paper](https://arxiv.org/abs/2311.08360)). We find a surprising hybrid of ICL and IWL as the asymptotic mechanism, with _cooperative_ interactions allowing ICL to emerge earlier in training. A key aspect of these analyses was using the tools from the [second paper](https://arxiv.org/abs/2404.07129). We felt that this paper tied off the work quite nicely, really emphasizing key intuitions and dynamical phenomena that may help understanding larger networks. See the [corresponding section](#coopetition) for more details.
 
 As it covers the above works, the codebase has many parts. We highlight the key pieces and provide more detail in the subsections for reproducing each paper. Most files are also supplemented with comments to aid understanding.
 
-We're very excited to start getting this work out, and if you're also interested (or have questions about the code), feel free to reach out -- aaditya.singh.21@ucl.ac.uk. 
+We're very excited to finish this series of work. If you're interested in extensions (or have questions about the code), feel free to reach out -- aaditya.singh.21@ucl.ac.uk.
 
 <a name="code"></a>
 ## Codebase structure
@@ -39,6 +37,8 @@ General codebase sturcture:
 - [samplers.py](samplers.py): JAX-based data sampling for our synthetic setup. 
 - [models.py](models.py): Implements causal transformer models using our artificial optogenetics framework, allowing for easy recording and manipulation of intermediate activations
 - [opto.py](opto.py): Contains the options and implementations of various optogenetic manipulations we used for some of the work. Argparse arguments for optogenetic variations are added here. The general idea was to have this be similar intuitively to a [visitor pattern](https://web.mit.edu/6.031/www/sp22/classes/27-little-languages-2/), where to add optogenetic manipulations, all one has to do is modify opto.py. See [Artificial optogenetics framework](#artificial_opto) for more detail.
+- [coopetition_model_solver.py](coopetition_model_solver.py): A lightweight library for the experimenting with toy models that we found to be surprisingly representative of larger network learning dynamics.
+- [visualize_runs.py](visualize_runs.py): A heavyweight plotting library for motivated readers that want to dive deeper. Largely useful for visualizing near-arbitrary progress measures with near-aribtrary optogenetic manipulations at the dataset and individual data point levels.
 
 Generally, the codebase makes use of a lot of functional programming, as is common with JAX codebases.
 
@@ -49,9 +49,9 @@ Part of why we used JAX is to ensure good random seed reproducibility (similar t
 - `train_seed`: Used to generate training data (via [samplers.py](samplers.py)). Also used for things like dropout etc. if those are used (none of our experiments used these features)
 - `eval_seed`: Used to generate eval data. We also have an option to directly read in pre-constructed eval data (`load_eval_data`). Also used for things like dropout etc. if those are used (none of our experiments used these features)
 
-See lines ~335-336 in [main.py](main.py) to see how the latter seeds get split into data and model. 
+See lines ~347-48 in [main.py](main.py) to see how the latter seeds get split into data and model. 
 
-When checkpoints are saved, we save the three relevant seeds (see line ~435 in [main.py](main.py)).
+When checkpoints are saved, we save the three relevant seeds (see line ~510 in [main.py](main.py)).
 
 Note, the way our training process works is that a seed is used at every step to generate a batch. This means if the batch size changes, the exact sequence of examples seen by the model will change. A batch size of 32 was used for all experiments. Tests with varying `train_seed` did not show much variance.
 
@@ -123,10 +123,36 @@ We include notebook copies of [ih_paper_plots.ipynb](ih_paper_plots.ipynb) that 
 }
 ```
 
-<a name="paper3"></a>
-## Reproducing paper 3
+<a name="coopetition"></a>
+## Reproducing [Strategy coopetition explains the emergence and transience of in-context learning](https://arxiv.org/abs/2503.05631)
 
-In progress. Check back later.
+This paper required significantly more than the [previous paper](#ih_paper), so we recommend using GPUs. The total compute is still significantly lower than the [first transience paper](#transience), given the smaller models used.
+
+To reproduce this paper, one should first generate the exemplar embeddings using [omni_features_extract.py](omni_features_extract.py). Then, one can run [coopetition_paper_sweep.py](coopetition_paper_sweep.py), which uses [submitit](https://github.com/facebookincubator/submitit) to parallelize jobs on a slurm cluster. The exact configuration may need to be changed depending on where you're running the jobs. Worst case, it should be relatively simple to run them sequentially. Note that the final two runs are on 12L models, and will take about 2 days on a 80GB H100 GPU -- those runs are only used for Figure 6b, and so could be removed if this is too expensive. Once the sweep is done, one can use [coopetition_paper_plots.ipynb](coopetition_paper_plots.ipynb) to reproduce all figures from the main paper.
+
+Those files minimally reproduce the main text. To additionally obtain all appendix results, run [coopetition_paper_appendix_sweep.py](coopetition_paper_appendix_sweep.py) and [coopetition_paper_appendix_plots.ipynb](coopetition_paper_appendix_plots.ipynb).
+
+### Minimal mathematical model of coopetition
+
+Building off [simple_model_solver.py](simple_model_solver.py) used for the [induction heads paper](#ih_paper), we made a new file [coopetition_model_solver.py](coopetition_model_solver.py) that can serve as a lightweight library for experimenting with minimal vector-learning setups. This file is meant to be modular and imported into a notebook. It provides a lot of functionality, such as automatic tracking of various losses, which we found more easy to use than the original [simple_model_solver.py](simple_model_solver.py).
+
+### Visualization
+
+We created a heavier-weight plotting library to further explore our models: [visualize_runs.py](visualize_runs.py). This may not be the easiest to use for newcomers, but we found it very helpful in looking at a wide variety of evolution plots through training (i.e., progress measures), with arbitrary optogenetic manipulations. It also offers functionality to decompose to the individual datapoint level, which we explored briefly (in the ICL-only setting), noting some interesting things such as loss on many individual points actually increasing before decreasing. We're excited to release this tooling in case its helpful to other ICL researchers!
+
+### Cite
+
+```
+@misc{singh2025strategycoopetitionexplainsemergence,
+      title={Strategy Coopetition Explains the Emergence and Transience of In-Context Learning}, 
+      author={Aaditya K. Singh and Ted Moskovitz and Sara Dragutinovic and Felix Hill and Stephanie C. Y. Chan and Andrew M. Saxe},
+      year={2025},
+      eprint={2503.05631},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2503.05631}, 
+}
+```
 
 <a name="installation"></a>
 ## Installation
@@ -136,4 +162,4 @@ See [setup.md](setup.md) for instructions for various CUDA driver versions.
 <a name="contributors"></a>
 ## Contributors
 
-The primary creator and maintainer of this code was Aaditya Singh. Ted Moskovitz also contributed to various parts (model, data samplers, training). The code was based off an earlier transformer implementation by Erin Grant. A special thanks to Stephanie Chan, who all this work was done in close collaboration with. The overall project was supervised by Andrew Saxe and Felix Hill, with Andrew Saxe also contributing some code for the tensor product toy model. 
+The primary creator and maintainer of this code was Aaditya Singh. Ted Moskovitz and Sara Dragutinovic also contributed to various parts (model, data samplers, training). The code was based off an earlier transformer implementation by Erin Grant. A special thanks to Stephanie Chan, who all this work was done in close collaboration with. The overall project was supervised by Andrew Saxe and Felix Hill, with Andrew Saxe also contributing some code for the first iteration of the tensor product toy model. 

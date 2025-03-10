@@ -21,6 +21,8 @@ def create_parser():
   parser = argparse.ArgumentParser()
   parser.add_argument('--config_from_file', default=None, type=str, help="Config filename. Note that EVERYTHING will be overridden/any other args you pass in will be ignored. Use this option only when you essentially want to duplicate an experiment.")
 
+  parser.add_argument('--suppress_output', action='store_true', help="If specified, suppresses eval outputs. Since we don't dump that much stuff, we have the default as printing. This flag is mainly used when running sweeps on the cluster (as printing can slow down jobs).")
+
   parser.add_argument('--base_folder', default='./runs', type=str, help='Path to base folder to store runs')
   parser.add_argument('--use_wandb', action='store_true', help="Defaults to false. If specified, log to wandb.")
   parser.add_argument('--raw_name', action='store_true', help='Defaults to false. When false, the datetime is prepended to the runname for ease of distinguishing. If specified, we will not prepend the datetime.')
@@ -51,6 +53,8 @@ def create_parser():
   parser.add_argument('--weight_decay', default=0.0, type=float, help="Weight decay.")
   parser.add_argument('--load_from_ckpt', default=None, type=str, help="Checkpoint file to load from")
   parser.add_argument('--load_from_ckpt_cfg', default=None, type=str, help="Config of checkpointed model to load. Overrides current model config params as otherwise equinox won't let us load in.")
+  parser.add_argument('--no_load_seeds', action='store_true', help="If specified, will not restore dataset seeds. This can be useful if using other weights to initialize.")
+  parser.add_argument('--no_load_opt_state', action='store_true', help="If specified, will not store optimizer state. This can be useful if using other weights to initialize.")
   parser.add_argument('--ckpt_every', default=None, type=int, help="If specified, how often to checkpoint")
   parser.add_argument('--ckpt_sched', nargs='+', default=None, type=int, help="A list of iterations to checkpoint at. More easily specified with --ckpt_sched_file.")
   parser.add_argument('--ckpt_sched_file', default=None, type=str, help="If specified, a pickle file that when read in, provides a python array with checkpoint iterations. This array will be stored in ckpt_sched. Provides more flexibility for e.g. sampling more checkpoints around phase changes.")
@@ -75,7 +79,7 @@ def create_parser():
   parser.add_argument('--eval_sched', nargs='+', default=None, type=int, help="A list of iterations to evaluate at. More easily specified with --eval_sched_file.")
   parser.add_argument('--eval_sched_file', default=None, type=str, help="If specified, a pickle file that when read in, provides a python array with eval iterations. This array will be stored in eval_sched.")
   parser.add_argument('--save_eval_data', default=None, type=str, help="If specified, file to store eval data to. Gets placed in runs/\{opts.run\}.")
-  parser.add_argument('--load_eval_data', default=None, type=str, help="If specified, an h5 file that eval data can be loaded from. Should have a format compatible with save_eval_data")
+  parser.add_argument('--load_eval_data', nargs='+', default=None, type=str, help="If specified, h5 files that eval data can be loaded from. Should have a format compatible with save_eval_data")
 
   # We want the option to have many different evaluators
   # We do this a bit messily by taking in a bunch of lists
@@ -104,7 +108,10 @@ def create_parser():
   parser.add_argument('--fs_relabel_split_seed', type=int, default=20, help="Random seed to use when drawing fs relabel split")
   parser.add_argument('--noise_scale_train', default=0.0, type=float, help="If >0, adds Gaussian noise to training data with given scale")
   parser.add_argument('--zipf_alpha', default=0.0, type=float, help="Sample training classes from a Zipfian distribution with parameter alpha. Defaults to 0 (uniform class distribution).")
+
+  # Various training data manipulations
   parser.add_argument('--match_query_and_distractors', action='store_true', help="If true, match query exemplar and bursty examplars in context, as well as distractor exemplars")
+  parser.add_argument('--assign_query_label_random', action='store_true', help="Whether or not to assign query label randomly to an in-context exemplar during training. Defaults to false (0). Will apply to evaluators constructed as well.")
 
   return parser
 

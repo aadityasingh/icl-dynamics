@@ -18,7 +18,7 @@ pip install numpy scipy matplotlib tqdm h5py argparse nptyping equinox optax wan
 
 At this point, we were able to reproduce all results in [What needs to go right for an induction head?](https://arxiv.org/abs/2404.07129), using the instructions from [the readme](README.md), on an A100 GPU using CUDA 12.0. We were also able to re-extract omniglot features used for all papers using [omni_features_extract.py](omni_features_extract.py).
 
-Note, at the time of writing this guide/publishing this code, the most recent JAX version was *0.4.26*, and the code is thus cmopatible with this version. 
+Note, at the time of writing this guide/publishing this code, the most recent JAX version was *0.4.26*, and the code is thus cmopatible with this version.
 
 ### Some (possibly useful) notes
 

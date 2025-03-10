@@ -59,7 +59,7 @@ models['resnet18'] = [rnet18, a]
 batch_size = 2048
 # Number of omniglot examples to grab
 # NOTE: the file used for the IH paper only had 5 extracted exemplars (only 1 was used)
-# NOTE: for the transience paper, num_examples = 20 (the max) was used
+# NOTE: for the transience and coopetition paper, num_examples = 20 (the max) was used
 num_examples = 20
 
 results = dict()
