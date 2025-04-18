@@ -26,7 +26,7 @@ Our third paper, [Strategy coopetition explains the emergence and transience of 
 
 As it covers the above works, the codebase has many parts. We highlight the key pieces and provide more detail in the subsections for reproducing each paper. Most files are also supplemented with comments to aid understanding.
 
-We're very excited to finish this series of work. If you're interested in extensions (or have questions about the code), feel free to reach out -- aaditya.singh.21@ucl.ac.uk.
+If you're interested in extensions (or have questions about the code), feel free to reach out -- aaditya.singh.21@ucl.ac.uk.
 
 <a name="code"></a>
 ## Codebase structure
